@@ -23,6 +23,17 @@ struct DebugMenu: View {
                                     .foregroundColor(.white)
                                     .cornerRadius(8)
                             }
+                            Button(action: {
+                                viewModel.waveAnimated = true
+                            }) {
+                                Text("Wave Filters")
+                                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                                    .padding(.vertical, 6)
+                                    .padding(.horizontal, 12)
+                                    .background(Color.blue.opacity(0.12))
+                                    .foregroundColor(.white)
+                                    .cornerRadius(8)
+                            }
                             // Add more debug buttons here in the HStack
                         }
                         // For future: replace HStack with a grid for more actions

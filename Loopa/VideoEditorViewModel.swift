@@ -9,7 +9,13 @@ import UIKit
 @available(iOS 13.0, *)
 public class VideoEditorViewModel: ObservableObject {
     @Published public var player: AVPlayer?
-    @Published public var asset: AVAsset?
+    @Published public var asset: AVAsset? {
+        didSet {
+            if let asset = asset {
+                self.generateLoadingThumbnail(for: asset)
+            }
+        }
+    }
     @Published public var selectedFilter: FilterType = .none
     @Published public var thumbnails: [UIImage] = []
     @Published public var gifStartTime: Double = 0
@@ -23,11 +29,13 @@ public class VideoEditorViewModel: ObservableObject {
     @Published public var loadingThumbnail: UIImage? = nil
     @Published public var filteredThumbnails: [FilterType: UIImage] = [:]
     @Published public var currentTime: Double = 0
+    @Published public var waveAnimated: Bool = false
 
     private let filterKey = "selectedFilter"
     private let fpsKey = "gifFPS"
     private let videoService = VideoProcessingService()
     private var timeObserverToken: Any?
+    private weak var observedPlayer: AVPlayer?
 
     public init() {
         if let saved = UserDefaults.standard.string(forKey: filterKey),
@@ -152,15 +160,23 @@ public class VideoEditorViewModel: ObservableObject {
     }
 
     func generateLoadingThumbnail(for asset: AVAsset) {
+        print("[FilterThumb] Generating loading thumbnail")
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
         let time = CMTime(seconds: 0, preferredTimescale: 600)
         DispatchQueue.global(qos: .userInitiated).async {
             if let cgImage = try? generator.copyCGImage(at: time, actualTime: nil) {
                 let image = UIImage(cgImage: cgImage)
+                // Downscale to 80x80 for filter previews
+                let targetSize = CGSize(width: 80, height: 80)
+                let renderer = UIGraphicsImageRenderer(size: targetSize)
+                let downscaled = renderer.image { _ in
+                    image.draw(in: CGRect(origin: .zero, size: targetSize))
+                }
                 DispatchQueue.main.async {
+                    print("[FilterThumb] Setting loadingThumbnail and generating filtered thumbnails")
                     self.loadingThumbnail = image
-                    self.generateFilteredThumbnails(from: image)
+                    self.generateFilteredThumbnails(from: downscaled)
                 }
             } else {
                 DispatchQueue.main.async {
@@ -172,19 +188,27 @@ public class VideoEditorViewModel: ObservableObject {
     }
 
     func generateFilteredThumbnails(from base: UIImage) {
-        var result: [FilterType: UIImage] = [:]
-        guard let ciImage = CIImage(image: base) else {
-            self.filteredThumbnails = [:]
-            return
-        }
-        let context = CIContext()
-        for filter in FilterType.allCases {
-            let filteredCI = VideoFilterManager.apply(filter: filter, to: ciImage)
-            if let cgImage = context.createCGImage(filteredCI, from: filteredCI.extent) {
-                result[filter] = UIImage(cgImage: cgImage)
+        DispatchQueue.global(qos: .userInitiated).async {
+            var result: [FilterType: UIImage] = [:]
+            guard let ciImage = CIImage(image: base) else {
+                DispatchQueue.main.async { self.filteredThumbnails = [:] }
+                return
+            }
+            let context = CIContext()
+            for filter in FilterType.allCases {
+                let filteredCI = VideoFilterManager.apply(filter: filter, to: ciImage)
+                if let cgImage = context.createCGImage(filteredCI, from: filteredCI.extent) {
+                    result[filter] = UIImage(cgImage: cgImage)
+                    print("[FilterThumb] Success for filter: \(filter) (", filter.rawValue, ")")
+                } else {
+                    print("[FilterThumb] Failed to create CGImage for filter: \(filter) (", filter.rawValue, ")")
+                }
+            }
+            DispatchQueue.main.async {
+                print("[FilterThumb] Setting filteredThumbnails with keys: \(result.keys.map { $0.rawValue })")
+                self.filteredThumbnails = result
             }
         }
-        self.filteredThumbnails = result
     }
 
     func handleCapturedVideo(_ url: URL) {
@@ -199,6 +223,7 @@ public class VideoEditorViewModel: ObservableObject {
         DispatchQueue.main.async {
             let asset = AVURLAsset(url: copiedURL)
             self.asset = asset
+            print("[FilterThumb] About to call generateLoadingThumbnail")
             self.generateLoadingThumbnail(for: asset)
             Task { await self.generateThumbnails(from: asset) }
             Task { await self.applyFilter(.none) }
@@ -206,10 +231,11 @@ public class VideoEditorViewModel: ObservableObject {
     }
 
     private func addPlayerTimeObserver(player: AVPlayer?) {
-        // Remove old observer if any
-        if let token = timeObserverToken, let oldPlayer = self.player {
+        // Remove old observer if any, but only from the player that added it
+        if let token = timeObserverToken, let oldPlayer = observedPlayer {
             oldPlayer.removeTimeObserver(token)
             timeObserverToken = nil
+            observedPlayer = nil
         }
         guard let player = player else { return }
         // Observe every 1/30th of a second
@@ -217,6 +243,7 @@ public class VideoEditorViewModel: ObservableObject {
         timeObserverToken = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             self?.currentTime = time.seconds
         }
+        observedPlayer = player
     }
 }
 #endif

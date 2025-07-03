@@ -74,7 +74,7 @@ struct ContentView: View {
                                 
                                 .padding(.horizontal)
                             } else {
-                                FilterPickerView(viewModel: viewModel)
+                                FilterPickerView(viewModel: viewModel, triggerWave: $viewModel.waveAnimated)
                                     .padding(.top, 12)
                                 
                             }
@@ -311,19 +311,16 @@ struct GIFView: UIViewRepresentable {
 // MARK: - FilterPickerView
 struct FilterPickerView: View {
     @ObservedObject var viewModel: VideoEditorViewModel
-//    HStack(spacing: 4) {
-//        ForEach(0..<6, id: \.self) { _ in
-//            RoundedRectangle(cornerRadius: 12)
-//                .fill(Color.gray.opacity(0.12))
-//                .frame(width: 56, height: 56)
-//
-//        }
-//    }
-//    .padding(.horizontal)
+    @Binding var triggerWave: Bool
+    @State private var scales: [CGFloat] = Array(repeating: 1.0, count: FilterType.allCases.count)
+    @State private var waveAnimated = false
+    let waveDelay: Double = 0.055
+    let scaleDownDelay: Double = 0.09
+
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 1) {
-                ForEach(FilterType.allCases, id: \.self) { filter in
+                ForEach(Array(FilterType.allCases.enumerated()), id: \ .element) { index, filter in
                     Button(action: {
                         Task { await viewModel.applyFilter(filter) }
                     }) {
@@ -350,10 +347,51 @@ struct FilterPickerView: View {
                                 .foregroundColor(.primary)
                         }
                         .padding(3)
+                        .scaleEffect(scales[index])
+                        .animation(.interpolatingSpring(stiffness: 220, damping: 18), value: scales[index])
                     }
                 }
             }
             .padding(.horizontal)
+            .onChange(of: viewModel.filteredThumbnails) { thumbs in
+                // Trigger the wave animation only once, when all thumbnails are ready
+                if !waveAnimated && FilterType.allCases.allSatisfy({ thumbs[$0] != nil }) {
+                    waveAnimated = true
+                    triggerWave = false
+                    for index in 0..<FilterType.allCases.count {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * waveDelay) {
+                            withAnimation(.interpolatingSpring(stiffness: 220, damping: 18)) {
+                                scales[index] = 1.12
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + scaleDownDelay) {
+                                withAnimation(.interpolatingSpring(stiffness: 220, damping: 18)) {
+                                    scales[index] = 1.0
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .onChange(of: triggerWave) { newValue in
+                if newValue {
+                    for index in 0..<FilterType.allCases.count {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * waveDelay) {
+                            withAnimation(.interpolatingSpring(stiffness: 220, damping: 18)) {
+                                scales[index] = 1.12
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + scaleDownDelay) {
+                                withAnimation(.interpolatingSpring(stiffness: 220, damping: 18)) {
+                                    scales[index] = 1.0
+                                }
+                            }
+                        }
+                    }
+                    // Reset trigger
+                    DispatchQueue.main.asyncAfter(deadline: .now() + Double(FilterType.allCases.count) * waveDelay + 0.2) {
+                        triggerWave = false
+                    }
+                }
+            }
         }
     }
 }

@@ -41,6 +41,7 @@ struct VideoTrimmerView: View {
                         height: thumbnailHeight
                     )
                     GeometryReader { geometry in
+                        let currentTime = viewModel.currentTime
                         let totalWidth = geometry.size.width
                         let duration = viewModel.asset?.duration.seconds ?? 10
                         let pixelsPerSecond = duration > 0 ? totalWidth / duration : 0
@@ -57,6 +58,39 @@ struct VideoTrimmerView: View {
                                 pixelsPerSecond: pixelsPerSecond,
                                 height: thumbnailHeight
                             )
+
+                            // Tooltip above left handle
+                            let leftTooltipX = leftX + handleWidth / 2
+                            VStack(spacing: 2) {
+                                Text(String(format: "%02d:%02d.%01d",
+                                    Int(viewModel.gifStartTime) / 60,
+                                    Int(viewModel.gifStartTime) % 60,
+                                    Int((viewModel.gifStartTime * 10).truncatingRemainder(dividingBy: 10))
+                                ))
+                                .font(.system(size: 11, weight: .regular, design: .monospaced))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color(.systemBackground).opacity(isLeftDragging ? 0.95 : 0.75))
+                                .cornerRadius(6)
+                                .border(.black, width: 1)
+                                                                
+                                .shadow(color: .black.opacity(0.10), radius: 2, y: 1)
+                                .opacity(isLeftDragging ? 1 : 0.7)
+                                .offset(x: leftTooltipX - 28, y: -60)
+                                Spacer()
+                            }
+                            .frame(width: totalWidth, height: 0, alignment: .topLeading)
+
+                            // Playhead line
+                            if duration > 0 {
+                                let progress = max(0, min(1, currentTime / duration))
+                                Rectangle()
+                                    .fill(Color.accentColor)
+                                    .frame(width: 2, height: thumbnailHeight + 12)
+                                    .offset(x: totalWidth * CGFloat(progress) - 1)
+                                    .animation(.linear, value: currentTime)
+                                    .zIndex(20)
+                            }
 
                             // Left Handle
                             TrimHandleView(
@@ -76,15 +110,34 @@ struct VideoTrimmerView: View {
                                         isLeftDragging = true
                                     }
                                     .onEnded { value in
-                                        // withAnimation(.spring(response: 0.27, dampingFraction: 0.57)) {
-                                            let newTime = Double(min(max(0, value.location.x / pixelsPerSecond),
-                                                                     viewModel.gifEndTime - handleMinDistance / pixelsPerSecond))
-                                            viewModel.gifStartTime = newTime
-                                        // }
+                                        let newTime = Double(min(max(0, value.location.x / pixelsPerSecond),
+                                                                 viewModel.gifEndTime - handleMinDistance / pixelsPerSecond))
+                                        viewModel.gifStartTime = newTime
                                         isLeftDragging = false
                                     }
                             )
                             .zIndex(10)
+
+                            // Tooltip above right handle
+                            let rightTooltipX = rightX + handleWidth / 2
+                            VStack(spacing: 2) {
+                                Text(String(format: "%02d:%02d.%01d",
+                                    Int(viewModel.gifEndTime) / 60,
+                                    Int(viewModel.gifEndTime) % 60,
+                                    Int((viewModel.gifEndTime * 10).truncatingRemainder(dividingBy: 10))
+                                ))
+                                .font(.system(size: 11, weight: .regular, design: .monospaced))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color(.systemBackground).opacity(isRightDragging ? 0.95 : 0.75))
+                                .cornerRadius(6)
+                                .shadow(color: .black.opacity(0.10), radius: 2, y: 1)
+                                .border(.black, width: 1)
+                                .opacity(isRightDragging ? 1 : 0.7)
+                                .offset(x: rightTooltipX - 28, y: -60)
+                                Spacer()
+                            }
+                            .frame(width: totalWidth, height: 0, alignment: .topLeading)
 
                             // Right Handle
                             TrimHandleView(
@@ -104,11 +157,9 @@ struct VideoTrimmerView: View {
                                         isRightDragging = true
                                     }
                                     .onEnded { value in
-                                        // withAnimation(.spring(response: 0.27, dampingFraction: 0.57)) {
-                                            let newTime = Double(max(min(duration, value.location.x / pixelsPerSecond),
-                                                                     viewModel.gifStartTime + handleMinDistance / pixelsPerSecond))
-                                            viewModel.gifEndTime = newTime
-                                        // }
+                                        let newTime = Double(max(min(duration, value.location.x / pixelsPerSecond),
+                                                                 viewModel.gifStartTime + handleMinDistance / pixelsPerSecond))
+                                        viewModel.gifEndTime = newTime
                                         isRightDragging = false
                                     }
                             )
