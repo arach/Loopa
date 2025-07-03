@@ -45,6 +45,10 @@ struct VideoTrimmerView: View {
                         let duration = viewModel.asset?.duration.seconds ?? 10
                         let pixelsPerSecond = duration > 0 ? totalWidth / duration : 0
 
+                        let leftXRaw = CGFloat(viewModel.gifStartTime) * pixelsPerSecond - handleWidth / 2
+                        let leftX = leftXRaw < 0.1 ? 0 : leftXRaw
+                        let rightX = max(0, CGFloat(viewModel.gifEndTime) * pixelsPerSecond - handleWidth / 2)
+
                         ZStack(alignment: .leading) {
                             TrimOverlayView(
                                 totalWidth: totalWidth,
@@ -62,8 +66,7 @@ struct VideoTrimmerView: View {
                             )
                             .scaleEffect(isLeftDragging ? 1.18 : 1.0)
                             .shadow(color: Color.yellow.opacity(0.40), radius: isLeftDragging ? 10 : 5)
-                            .animation(.spring(response: 0.27, dampingFraction: 0.57), value: isLeftDragging)
-                            .offset(x: CGFloat(viewModel.gifStartTime) * pixelsPerSecond - handleWidth / 2)
+                            .offset(x: leftX)
                             .gesture(
                                 DragGesture()
                                     .onChanged { value in
@@ -72,7 +75,14 @@ struct VideoTrimmerView: View {
                                         viewModel.gifStartTime = newTime
                                         isLeftDragging = true
                                     }
-                                    .onEnded { _ in isLeftDragging = false }
+                                    .onEnded { value in
+                                        // withAnimation(.spring(response: 0.27, dampingFraction: 0.57)) {
+                                            let newTime = Double(min(max(0, value.location.x / pixelsPerSecond),
+                                                                     viewModel.gifEndTime - handleMinDistance / pixelsPerSecond))
+                                            viewModel.gifStartTime = newTime
+                                        // }
+                                        isLeftDragging = false
+                                    }
                             )
                             .zIndex(10)
 
@@ -84,8 +94,7 @@ struct VideoTrimmerView: View {
                             )
                             .scaleEffect(isRightDragging ? 1.18 : 1.0)
                             .shadow(color: Color.yellow.opacity(0.40), radius: isRightDragging ? 10 : 5)
-                            .animation(.spring(response: 0.27, dampingFraction: 0.57), value: isRightDragging)
-                            .offset(x: CGFloat(viewModel.gifEndTime) * pixelsPerSecond - handleWidth / 2)
+                            .offset(x: rightX)
                             .gesture(
                                 DragGesture()
                                     .onChanged { value in
@@ -94,7 +103,14 @@ struct VideoTrimmerView: View {
                                         viewModel.gifEndTime = newTime
                                         isRightDragging = true
                                     }
-                                    .onEnded { _ in isRightDragging = false }
+                                    .onEnded { value in
+                                        // withAnimation(.spring(response: 0.27, dampingFraction: 0.57)) {
+                                            let newTime = Double(max(min(duration, value.location.x / pixelsPerSecond),
+                                                                     viewModel.gifStartTime + handleMinDistance / pixelsPerSecond))
+                                            viewModel.gifEndTime = newTime
+                                        // }
+                                        isRightDragging = false
+                                    }
                             )
                             .zIndex(10)
                         }

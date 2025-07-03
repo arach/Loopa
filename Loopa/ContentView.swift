@@ -17,164 +17,177 @@ struct ContentView: View {
     @StateObject private var viewModel = VideoEditorViewModel()
     @State private var isPickerPresented = false
     @State private var gifURL: URL? = nil
+    @State private var showGifCreatedAlert = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            VStack(spacing: 8) {
-                Image(systemName: "wand.and.stars")
-                    .resizable()
-                    .frame(width: 40, height: 40)
-                    .foregroundColor(.accentColor)
-                Text("Create Magic")
-                    .font(.title).bold()
-                Text("Turn videos into GIFs")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.top, 40)
-            .padding(.bottom, 24)
-
-            // Video Preview or Placeholder
-            ZStack {
-                if let player = viewModel.player {
-                    VideoPlayer(player: player)
-                        .frame(height: 240)
-                        .cornerRadius(12)
-                        .clipped()
-                } else {
-                    NoVideoPlaceholderView(
-                        onImport: { isPickerPresented = true },
-                        onShoot: { viewModel.shootVideo() }
-                    )
+        ZStack {
+            VStack(spacing: 0) {
+                // Header
+                VStack(spacing: 8) {
+                    Image(systemName: "wand.and.stars")
+                        .resizable()
+                        .frame(width: 40, height: 40)
+                        .foregroundColor(.accentColor)
+                    Text("Create Magic")
+                        .font(.title).bold()
+                    Text("Turn videos into GIFs")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                 }
-            }
-            .frame(height: 240)
-            .frame(maxWidth: .infinity)
-            .background(Color.secondary.opacity(0.06))
-            .padding(.bottom, 24)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 40)
+                .padding(.bottom, 24)
 
-            // FILTERS Section
-            Text("FILTERS")
-                .font(.caption).bold()
-                .foregroundColor(.secondary)
-                .padding(.horizontal)
-                .padding(.bottom, 4)
-            FilterPickerView(viewModel: viewModel)
-                .padding(.bottom, 20)
-
-            // TRIM SELECTION Section
-            Text("TRIM SELECTION")
-                .font(.caption).bold()
-                .foregroundColor(.secondary)
-                .padding(.horizontal)
-                .padding(.bottom, 4)
-            VideoTrimmerView(viewModel: viewModel)
-                .padding(.vertical, 8)
-
-            // Drag instruction
-            HStack(spacing: 4) {
-                Image(systemName: "scissors")
-                Text("Drag to trim your GIF")
-            }
-            .font(.footnote)
-            .foregroundColor(.secondary)
-            .padding(.top, 4)
-            .padding(.horizontal)
-            .padding(.bottom, 8)
-
-            // Advanced Settings
-            DisclosureGroup {
-                HStack {
-                    Text("FPS:")
-                    Picker("FPS", selection: $viewModel.gifFPS) {
-                        ForEach([6,12,24,30], id: \.self) { fps in
-                            Text("\(fps)").tag(fps)
-                        }
+                // Video Preview or Placeholder
+                ZStack {
+                    if let player = viewModel.player {
+                        VideoPlayer(player: player)
+                            .frame(height: 240)
+                            .cornerRadius(12)
+                            .clipped()
+                    } else {
+                        NoVideoPlaceholderView(
+                            onImport: { isPickerPresented = true },
+                            onShoot: { viewModel.shootVideo() }
+                        )
                     }
-                    .pickerStyle(SegmentedPickerStyle())
                 }
-            } label: {
-                Label("Advanced Settings", systemImage: "gear")
-                    .font(.footnote)
+                .frame(height: 240)
+                .frame(maxWidth: .infinity)
+                .background(Color.secondary.opacity(0.06))
+                .padding(.bottom, 24)
+
+                // FILTERS Section
+                Text("FILTERS")
+                    .font(.caption).bold()
                     .foregroundColor(.secondary)
-            }
-            .padding(.horizontal)
-            .padding(.bottom, 28)
+                    .padding(.horizontal)
+                    .padding(.bottom, 4)
+                FilterPickerView(viewModel: viewModel)
+                    .padding(.bottom, 20)
 
-            // Action Buttons
-            HStack(spacing: 16) {
-                Button {
-                    isPickerPresented = true
-                } label: {
-                    Label("New Video", systemImage: "square.and.arrow.down")
-                        .frame(maxWidth: .infinity)
+                // TRIM SELECTION Section
+                if !viewModel.thumbnails.isEmpty {
+                    Text("TRIM SELECTION")
+                        .font(.caption).bold()
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal)
+                        .padding(.bottom, 4)
+                    VideoTrimmerView(viewModel: viewModel)
+                        .padding(.vertical, 8)
                 }
-                .buttonStyle(.bordered)
 
-                Button {
-                    Task {
-                        if let asset = viewModel.asset {
-                            if let result = await VideoExporter.exportFilteredGIF(
-                                asset: asset,
-                                filter: viewModel.selectedFilter,
-                                startTime: viewModel.gifStartTime,
-                                endTime: viewModel.gifEndTime
-                            ) {
-                                DispatchQueue.main.async {
-                                    gifURL = result
+                // Drag instruction
+                HStack(spacing: 4) {
+                    Image(systemName: "scissors")
+                    Text("Drag to trim your GIF")
+                }
+                .font(.footnote)
+                .foregroundColor(.secondary)
+                .padding(.top, 4)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+
+                // Advanced Settings
+                DisclosureGroup {
+                    HStack {
+                        Text("FPS:")
+                        Picker("FPS", selection: $viewModel.gifFPS) {
+                            ForEach([6,12,24,30], id: \.self) { fps in
+                                Text("\(fps)").tag(fps)
+                            }
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                    }
+                } label: {
+                    Label("Advanced Settings", systemImage: "gear")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 28)
+
+                // Action Buttons
+                HStack(spacing: 16) {
+                    Button {
+                        isPickerPresented = true
+                    } label: {
+                        Label("New Video", systemImage: "square.and.arrow.down")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button {
+                        Task {
+                            if let asset = viewModel.asset {
+                                if let result = await VideoExporter.exportFilteredGIF(
+                                    asset: asset,
+                                    filter: viewModel.selectedFilter,
+                                    startTime: viewModel.gifStartTime,
+                                    endTime: viewModel.gifEndTime
+                                ) {
+                                    DispatchQueue.main.async {
+                                        gifURL = result
+                                    }
                                 }
                             }
                         }
+                    } label: {
+                        Label("Make GIF", systemImage: "wand.and.stars")
+                            .frame(maxWidth: .infinity)
                     }
-                } label: {
-                    Label("Make GIF", systemImage: "wand.and.stars")
-                        .frame(maxWidth: .infinity)
+                    .buttonStyle(.borderedProminent)
                 }
-                .buttonStyle(.borderedProminent)
-            }
-            .frame(maxWidth: 400)
-            .padding(.horizontal)
-            .padding(.bottom, 24)
+                .frame(maxWidth: 400)
+                .padding(.horizontal)
+                .padding(.bottom, 24)
 
-            if let gifURL = gifURL {
-                GIFView(gifURL: gifURL)
-                    .frame(height: 150)
-                    .contextMenu {
-                        Button("Copy to Clipboard") {
-                            do {
-                                let gifData = try Data(contentsOf: gifURL)
-                                UIPasteboard.general.setData(gifData, forPasteboardType: UTType.gif.identifier)
-                            } catch {
-                                print("Failed to copy GIF to clipboard: \(error)")
+                if let gifURL = gifURL {
+                    GIFView(gifURL: gifURL)
+                        .frame(height: 150)
+                        .contextMenu {
+                            Button("Copy to Clipboard") {
+                                do {
+                                    let gifData = try Data(contentsOf: gifURL)
+                                    UIPasteboard.general.setData(gifData, forPasteboardType: UTType.gif.identifier)
+                                } catch {
+                                    print("Failed to copy GIF to clipboard: \(error)")
+                                }
                             }
-                        }
 
-                        Button("Save to Photos") {
-                            PHPhotoLibrary.shared().performChanges {
-                                PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: gifURL)
-                            } completionHandler: { success, error in
-                                if let error = error {
-                                    print("Save to Photos failed: \(error)")
-                                } else {
-                                    print("GIF saved to Photos")
+                            Button("Save to Photos") {
+                                PHPhotoLibrary.shared().performChanges {
+                                    PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: gifURL)
+                                } completionHandler: { success, error in
+                                    if let error = error {
+                                        print("Save to Photos failed: \(error)")
+                                    } else {
+                                        print("GIF saved to Photos")
+                                    }
                                 }
                             }
                         }
+                    Button {
+                        do {
+                            let gifData = try Data(contentsOf: gifURL)
+                            UIPasteboard.general.setData(gifData, forPasteboardType: UTType.gif.identifier)
+                        } catch {
+                            print("Failed to copy GIF to clipboard: \(error)")
+                        }
+                    } label: {
+                        Label("Copy GIF", systemImage: "doc.on.doc")
                     }
-                Button {
-                    do {
-                        let gifData = try Data(contentsOf: gifURL)
-                        UIPasteboard.general.setData(gifData, forPasteboardType: UTType.gif.identifier)
-                    } catch {
-                        print("Failed to copy GIF to clipboard: \(error)")
-                    }
-                } label: {
-                    Label("Copy GIF", systemImage: "doc.on.doc")
+                    .buttonStyle(.bordered)
+                    .padding(.bottom)
                 }
-                .buttonStyle(.bordered)
-                .padding(.bottom)
+            }
+            // Loader overlay
+            if viewModel.isLoading {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                ProgressView("Loading...")
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .scaleEffect(1.5)
             }
         }
         .frame(maxWidth: .infinity)
@@ -184,6 +197,9 @@ struct ContentView: View {
                     viewModel.handlePickerResult(result)
                 }
             }
+        }
+        .alert(isPresented: $showGifCreatedAlert) {
+            Alert(title: Text("GIF Ready!"), message: Text("The GIF has been copied to your clipboard."), dismissButton: .default(Text("OK")))
         }
     }
 }
