@@ -22,10 +22,12 @@ public class VideoEditorViewModel: ObservableObject {
     @Published public var loadedDuration: Double? = nil
     @Published public var loadingThumbnail: UIImage? = nil
     @Published public var filteredThumbnails: [FilterType: UIImage] = [:]
+    @Published public var currentTime: Double = 0
 
     private let filterKey = "selectedFilter"
     private let fpsKey = "gifFPS"
     private let videoService = VideoProcessingService()
+    private var timeObserverToken: Any?
 
     public init() {
         if let saved = UserDefaults.standard.string(forKey: filterKey),
@@ -88,7 +90,6 @@ public class VideoEditorViewModel: ObservableObject {
                     print("Setting asset and generating thumbnails")
                     let newAsset = AVURLAsset(url: copiedURL)
                     self.setOnMain(\Self.asset, newAsset, label: "asset")
-                    self.generateLoadingThumbnail(for: newAsset)
                     if let asset = self.asset {
                         do {
                             let cmTime = try await asset.load(.duration)
@@ -123,13 +124,14 @@ public class VideoEditorViewModel: ObservableObject {
         selectedFilter = filter
 
         let item = await videoService.filteredPlayerItem(for: asset, filter: filter)
-        player = AVPlayer(playerItem: item)
+        let newPlayer = AVPlayer(playerItem: item)
+        player = newPlayer
+        addPlayerTimeObserver(player: newPlayer)
 
         do {
             let duration = try await asset.load(.duration).seconds
             if duration > 0 {
                 self.duration = duration
-                self.gifEndTime = duration
             }
         } catch {
             print("Failed to load duration in applyFilter: \(error)")
@@ -183,6 +185,38 @@ public class VideoEditorViewModel: ObservableObject {
             }
         }
         self.filteredThumbnails = result
+    }
+
+    func handleCapturedVideo(_ url: URL) {
+        // Copy to temp directory to ensure we have access
+        let copiedURL = FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
+        try? FileManager.default.removeItem(at: copiedURL)
+        do {
+            try FileManager.default.copyItem(at: url, to: copiedURL)
+        } catch {
+            print("Copy failed: \(error)")
+        }
+        DispatchQueue.main.async {
+            let asset = AVURLAsset(url: copiedURL)
+            self.asset = asset
+            self.generateLoadingThumbnail(for: asset)
+            Task { await self.generateThumbnails(from: asset) }
+            Task { await self.applyFilter(.none) }
+        }
+    }
+
+    private func addPlayerTimeObserver(player: AVPlayer?) {
+        // Remove old observer if any
+        if let token = timeObserverToken, let oldPlayer = self.player {
+            oldPlayer.removeTimeObserver(token)
+            timeObserverToken = nil
+        }
+        guard let player = player else { return }
+        // Observe every 1/30th of a second
+        let interval = CMTime(seconds: 1.0/30.0, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        timeObserverToken = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+            self?.currentTime = time.seconds
+        }
     }
 }
 #endif

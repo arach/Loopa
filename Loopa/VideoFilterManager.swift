@@ -81,7 +81,9 @@ extension VideoFilterManager {
         case .sepia:
             let f = CIFilter.sepiaTone()
             f.inputImage = image
-            f.intensity = 1.0
+            if f.inputKeys.contains("inputIntensity") {
+                f.intensity = 1.0
+            }
             return f.outputImage ?? image
         case .comic:
             let f = CIFilter.comicEffect()
@@ -90,7 +92,9 @@ extension VideoFilterManager {
         case .posterize:
             let f = CIFilter.colorPosterize()
             f.inputImage = image
-            f.levels = 6
+            if f.inputKeys.contains("inputLevels") {
+                f.levels = 6
+            }
             return f.outputImage ?? image
         case .noir:
             let f = CIFilter.photoEffectNoir()
@@ -103,24 +107,36 @@ extension VideoFilterManager {
         case .blur:
             let f = CIFilter.gaussianBlur()
             f.inputImage = image
-            f.radius = 5
+            if f.inputKeys.contains("inputRadius") {
+                f.radius = 5
+            }
             return f.outputImage ?? image
         case .vignette:
             let f = CIFilter.vignette()
             f.inputImage = image
-            f.intensity = 1.0
-            f.radius = 2.0
+            if f.inputKeys.contains("inputIntensity") {
+                f.intensity = 1.0
+            }
+            if f.inputKeys.contains("inputRadius") {
+                f.radius = 2.0
+            }
             return f.outputImage ?? image
         case .bloom:
             let f = CIFilter.bloom()
             f.inputImage = image
-            f.intensity = 1.0
-            f.radius = 10
+            if f.inputKeys.contains("inputIntensity") {
+                f.intensity = 1.0
+            }
+            if f.inputKeys.contains("inputRadius") {
+                f.radius = 10
+            }
             return f.outputImage ?? image
         case .pixelate:
             let f = CIFilter.pixellate()
             f.inputImage = image
-            f.scale = 10
+            if f.inputKeys.contains("inputScale") {
+                f.scale = 10
+            }
             return f.outputImage ?? image
         case .invert:
             let f = CIFilter.colorInvert()

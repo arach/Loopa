@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		532473812E171876007A741A /* coffee.mov in Resources */ = {isa = PBXBuildFile; fileRef = 532473802E171876007A741A /* coffee.mov */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		53782ED32E14AFE900037C92 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +28,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		532473802E171876007A741A /* coffee.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = coffee.mov; sourceTree = "<group>"; };
 		53782EC42E14AFE700037C92 /* Loopa.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Loopa.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		53782ED22E14AFE900037C92 /* LoopaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LoopaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		53782EDC2E14AFE900037C92 /* LoopaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LoopaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -33,14 +38,14 @@
 		5324736C2E159823007A741A /* Exceptions for "Loopa" folder in "LoopaTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				film_sprockets.png,
+				Media/film_sprockets.png,
 			);
 			target = 53782ED12E14AFE900037C92 /* LoopaTests */;
 		};
 		5324736D2E159823007A741A /* Exceptions for "Loopa" folder in "LoopaUITests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				film_sprockets.png,
+				Media/film_sprockets.png,
 			);
 			target = 53782EDB2E14AFE900037C92 /* LoopaUITests */;
 		};
@@ -93,9 +98,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		532473852E171AC6007A741A /* Media */ = {
+			isa = PBXGroup;
+			children = (
+				532473802E171876007A741A /* coffee.mov */,
+			);
+			path = Media;
+			sourceTree = "<group>";
+		};
 		53782EBB2E14AFE700037C92 = {
 			isa = PBXGroup;
 			children = (
+				532473852E171AC6007A741A /* Media */,
 				53782EC62E14AFE700037C92 /* Loopa */,
 				53782ED52E14AFE900037C92 /* LoopaTests */,
 				53782EDF2E14AFE900037C92 /* LoopaUITests */,
@@ -233,6 +247,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				532473812E171876007A741A /* coffee.mov in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -412,6 +427,7 @@
 				CODE_SIGN_ENTITLEMENTS = Loopa/Loopa.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = Media/coffee.mov;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
@@ -452,6 +468,7 @@
 				CODE_SIGN_ENTITLEMENTS = Loopa/Loopa.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = Media/coffee.mov;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
