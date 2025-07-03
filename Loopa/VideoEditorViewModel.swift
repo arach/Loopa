@@ -20,6 +20,8 @@ public class VideoEditorViewModel: ObservableObject {
     @Published public var isLoading: Bool = false
     @Published public var gifFPS: Int = 6
     @Published public var loadedDuration: Double? = nil
+    @Published public var loadingThumbnail: UIImage? = nil
+    @Published public var filteredThumbnails: [FilterType: UIImage] = [:]
 
     private let filterKey = "selectedFilter"
     private let fpsKey = "gifFPS"
@@ -86,6 +88,7 @@ public class VideoEditorViewModel: ObservableObject {
                     print("Setting asset and generating thumbnails")
                     let newAsset = AVURLAsset(url: copiedURL)
                     self.setOnMain(\Self.asset, newAsset, label: "asset")
+                    self.generateLoadingThumbnail(for: newAsset)
                     if let asset = self.asset {
                         do {
                             let cmTime = try await asset.load(.duration)
@@ -144,6 +147,42 @@ public class VideoEditorViewModel: ObservableObject {
     func shootVideo() {
         print("Shoot video tapped — implement camera logic here.")
         // TODO: Implement camera capture logic
+    }
+
+    func generateLoadingThumbnail(for asset: AVAsset) {
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.appliesPreferredTrackTransform = true
+        let time = CMTime(seconds: 0, preferredTimescale: 600)
+        DispatchQueue.global(qos: .userInitiated).async {
+            if let cgImage = try? generator.copyCGImage(at: time, actualTime: nil) {
+                let image = UIImage(cgImage: cgImage)
+                DispatchQueue.main.async {
+                    self.loadingThumbnail = image
+                    self.generateFilteredThumbnails(from: image)
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self.loadingThumbnail = nil
+                    self.filteredThumbnails = [:]
+                }
+            }
+        }
+    }
+
+    func generateFilteredThumbnails(from base: UIImage) {
+        var result: [FilterType: UIImage] = [:]
+        guard let ciImage = CIImage(image: base) else {
+            self.filteredThumbnails = [:]
+            return
+        }
+        let context = CIContext()
+        for filter in FilterType.allCases {
+            let filteredCI = VideoFilterManager.apply(filter: filter, to: ciImage)
+            if let cgImage = context.createCGImage(filteredCI, from: filteredCI.extent) {
+                result[filter] = UIImage(cgImage: cgImage)
+            }
+        }
+        self.filteredThumbnails = result
     }
 }
 #endif

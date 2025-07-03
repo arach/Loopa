@@ -11,6 +11,7 @@ import AVKit
 import PhotosUI
 import UIKit
 import WebKit
+import Combine
 
 @available(iOS 13.0, *)
 struct ContentView: View {
@@ -18,6 +19,8 @@ struct ContentView: View {
     @State private var isPickerPresented = false
     @State private var gifURL: URL? = nil
     @State private var showGifCreatedAlert = false
+    @State private var showGifBanner = false
+    @State private var isMakingGif = false
 
     var body: some View {
         ZStack {
@@ -43,7 +46,6 @@ struct ContentView: View {
                     if let player = viewModel.player {
                         VideoPlayer(player: player)
                             .frame(height: 240)
-                            .cornerRadius(12)
                             .clipped()
                     } else {
                         NoVideoPlaceholderView(
@@ -51,10 +53,31 @@ struct ContentView: View {
                             onShoot: { viewModel.shootVideo() }
                         )
                     }
+                    // Loader overlay (section only)
+                    if viewModel.isLoading {
+                        if let thumbnail = viewModel.loadingThumbnail {
+                            ZStack {
+                                Image(uiImage: thumbnail)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(height: 240)
+                                    .clipped()
+                                Color.black.opacity(0.95)
+                                AnimatedLoadingText()
+                            }
+                            
+                        } else {
+                            ZStack {
+                                Color.black.opacity(0.95)
+                                AnimatedLoadingText()
+                            }
+                            
+                        }
+                    }
                 }
                 .frame(height: 240)
                 .frame(maxWidth: .infinity)
-                .background(Color.secondary.opacity(0.06))
+                .background(Color.secondary.opacity(0.1))
                 .padding(.bottom, 24)
 
                 // FILTERS Section
@@ -181,14 +204,43 @@ struct ContentView: View {
                     .padding(.bottom)
                 }
             }
-            // Loader overlay
-            if viewModel.isLoading {
-                Color.black.opacity(0.3)
+            // Loader overlay for GIF creation
+            if viewModel.isLoading && isMakingGif {
+                Color.black.opacity(0.4)
                     .ignoresSafeArea()
-                ProgressView("Loading...")
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(1.5)
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .scaleEffect(1.5)
+                    Text("Creating your GIF...")
+                        .foregroundColor(.white)
+                        .font(.headline)
+                }
+                .transition(.opacity)
             }
+            // Celebratory banner when GIF is ready
+            if showGifBanner {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Text("🎉 GIF Ready!")
+                            .font(.headline)
+                            .padding()
+                            .background(Color.green.opacity(0.95))
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                            .shadow(radius: 8)
+                        Spacer()
+                    }
+                    .padding(.bottom, 40)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(100)
+            }
+            #if DEBUG
+            DebugMenu(viewModel: viewModel)
+            #endif
         }
         .frame(maxWidth: .infinity)
         .sheet(isPresented: $isPickerPresented) {
@@ -233,16 +285,28 @@ struct FilterPickerView: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: 4) {
                 ForEach(FilterType.allCases, id: \.self) { filter in
                     Button(action: {
                         Task { await viewModel.applyFilter(filter) }
                     }) {
                         VStack {
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(viewModel.selectedFilter == filter ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: 1)
-                                .frame(width: 44, height: 44)
-                                .background(viewModel.selectedFilter == filter ? Color.accentColor.opacity(0.1) : Color.clear)
+                            if let thumb = viewModel.filteredThumbnails[filter] {
+                                Image(uiImage: thumb)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 56, height: 56)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(viewModel.selectedFilter == filter ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: 2)
+                                    )
+                            } else {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(viewModel.selectedFilter == filter ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: 1)
+                                    .frame(width: 56, height: 56)
+                                    .background(viewModel.selectedFilter == filter ? Color.accentColor.opacity(0.1) : Color.clear)
+                            }
                             Text(filter.rawValue)
                                 .font(.caption)
                                 .foregroundColor(.primary)
@@ -256,5 +320,16 @@ struct FilterPickerView: View {
     }
 }
 
+struct AnimatedLoadingText: View {
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            BrailleSpinnerView()
+                .frame(width: 22, alignment: .center)
+            Text("loading")
+                .font(.system(size: 13, weight: .light, design: .monospaced))
+                .foregroundColor(.white)
+        }
+    }
+}
 
 #endif
