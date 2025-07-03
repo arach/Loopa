@@ -19,51 +19,105 @@ struct ContentView: View {
     @State private var gifURL: URL? = nil
 
     var body: some View {
-        VStack {
-            // Video Player Section
+        VStack(spacing: 0) {
+            // Header
+            VStack(spacing: 8) {
+                Image(systemName: "wand.and.stars")
+                    .resizable()
+                    .frame(width: 40, height: 40)
+                    .foregroundColor(.accentColor)
+                Text("Create Magic")
+                    .font(.title).bold()
+                Text("Turn videos into GIFs")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 40)
+            .padding(.bottom, 24)
+
+            // Video Preview or Placeholder
             ZStack {
-                if let player = viewModel.player {
-                    VideoPlayer(player: player)
-                        .frame(height: 300)
-                }
-                if viewModel.isLoading {
-                    Color.black.opacity(0.4)
-                        .frame(height: 300)
-                        .overlay(
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .scaleEffect(2)
-                        )
+                if let asset = viewModel.asset {
+                    // Video player goes here
+                } else {
+                    NoVideoPlaceholderView(
+                        onImport: { isPickerPresented = true },
+                        onShoot: { viewModel.shootVideo() }
+                    )
                 }
             }
+            .frame(height: 240)
+            .frame(maxWidth: .infinity)
+            .background(Color.secondary.opacity(0.06))
+            .padding(.bottom, 24)
 
-            // Filter Picker
+            // FILTERS Section
+            Text("FILTERS")
+                .font(.caption).bold()
+                .foregroundColor(.secondary)
+                .padding(.horizontal)
+                .padding(.bottom, 4)
             FilterPickerView(viewModel: viewModel)
+                .padding(.bottom, 20)
 
-            // Video Trimmer
+            // TRIM SELECTION Section
+            Text("TRIM SELECTION")
+                .font(.caption).bold()
+                .foregroundColor(.secondary)
+                .padding(.horizontal)
+                .padding(.bottom, 4)
             VideoTrimmerView(viewModel: viewModel)
+                .padding(.vertical, 8)
+
+            // Drag instruction
+            HStack(spacing: 4) {
+                Image(systemName: "scissors")
+                Text("Drag to trim your GIF")
+            }
+            .font(.footnote)
+            .foregroundColor(.secondary)
+            .padding(.top, 4)
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+
+            // Advanced Settings
+            DisclosureGroup {
+                HStack {
+                    Text("FPS:")
+                    Picker("FPS", selection: $viewModel.gifFPS) {
+                        ForEach([6,12,24,30], id: \.self) { fps in
+                            Text("\(fps)").tag(fps)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                }
+            } label: {
+                Label("Advanced Settings", systemImage: "gear")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 28)
 
             // Action Buttons
-            HStack {
-                Button("Import Video") {
+            HStack(spacing: 16) {
+                Button {
                     isPickerPresented = true
+                } label: {
+                    Label("New Video", systemImage: "square.and.arrow.down")
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.bordered)
 
-                Spacer()
-
-                Button("Export") {
-                    Task {
-                        print("Export tapped — implement exportVideo logic if needed")
-                    }
-                }
-                .disabled(viewModel.asset == nil)
-
-                Button("Make a GIF") {
+                Button {
                     Task {
                         if let asset = viewModel.asset {
                             if let result = await VideoExporter.exportFilteredGIF(
                                 asset: asset,
-                                filter: viewModel.selectedFilter
+                                filter: viewModel.selectedFilter,
+                                startTime: viewModel.gifStartTime,
+                                endTime: viewModel.gifEndTime
                             ) {
                                 DispatchQueue.main.async {
                                     gifURL = result
@@ -71,9 +125,15 @@ struct ContentView: View {
                             }
                         }
                     }
+                } label: {
+                    Label("Make GIF", systemImage: "wand.and.stars")
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.borderedProminent)
             }
-            .padding()
+            .frame(maxWidth: 400)
+            .padding(.horizontal)
+            .padding(.bottom, 24)
 
             if let gifURL = gifURL {
                 GIFView(gifURL: gifURL)
@@ -100,8 +160,21 @@ struct ContentView: View {
                             }
                         }
                     }
+                Button {
+                    do {
+                        let gifData = try Data(contentsOf: gifURL)
+                        UIPasteboard.general.setData(gifData, forPasteboardType: UTType.gif.identifier)
+                    } catch {
+                        print("Failed to copy GIF to clipboard: \(error)")
+                    }
+                } label: {
+                    Label("Copy GIF", systemImage: "doc.on.doc")
+                }
+                .buttonStyle(.bordered)
+                .padding(.bottom)
             }
         }
+        .frame(maxWidth: .infinity)
         .sheet(isPresented: $isPickerPresented) {
             VideoImporter { result in
                 if let result = result {
@@ -141,109 +214,28 @@ struct FilterPickerView: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack {
-                ForEach(FilterType.allCases, id: \ .self) { filter in
+            HStack(spacing: 8) {
+                ForEach(FilterType.allCases, id: \.self) { filter in
                     Button(action: {
                         Task { await viewModel.applyFilter(filter) }
                     }) {
-                        Text(filter.rawValue)
-                            .padding()
-                            .background(viewModel.selectedFilter == filter ? Color.blue : Color.gray)
-                            .foregroundColor(.white)
-                            .cornerRadius(8)
+                        VStack {
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(viewModel.selectedFilter == filter ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: 1)
+                                .frame(width: 44, height: 44)
+                                .background(viewModel.selectedFilter == filter ? Color.accentColor.opacity(0.1) : Color.clear)
+                            Text(filter.rawValue)
+                                .font(.caption)
+                                .foregroundColor(.primary)
+                        }
+                        .padding(4)
                     }
                 }
             }
-            .padding()
+            .padding(.horizontal)
         }
     }
 }
 
-// MARK: - VideoTrimmerView
-@MainActor
-struct VideoTrimmerView: View {
-    @ObservedObject var viewModel: VideoEditorViewModel
-    let thumbnailWidth: CGFloat = 40
-    let thumbnailHeight: CGFloat = 60
-    let handleWidth: CGFloat = 4
-    let handleMinDistance: CGFloat = 10
 
-    @GestureState private var isDraggingStart = false
-    @GestureState private var isDraggingEnd = false
-
-    var body: some View {
-        ZStack {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 2) {
-                    ForEach(viewModel.thumbnails.indices, id: \ .self) { index in
-                        Image(uiImage: viewModel.thumbnails[index])
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: thumbnailWidth, height: thumbnailHeight)
-                            .clipped()
-                    }
-                }
-            }
-            .frame(height: thumbnailHeight)
-
-            GeometryReader { geometry in
-                let totalWidth = geometry.size.width
-                let duration = viewModel.asset?.duration.seconds ?? 0
-                let pixelsPerSecond = duration > 0 ? totalWidth / duration : 0
-
-                ZStack(alignment: .leading) {
-                    Rectangle()
-                        .fill(Color.black.opacity(0.3))
-                        .frame(width: CGFloat(viewModel.gifStartTime) * pixelsPerSecond)
-                        .allowsHitTesting(false)
-
-                    Rectangle()
-                        .fill(Color.black.opacity(0.3))
-                        .frame(width: totalWidth - CGFloat(viewModel.gifEndTime) * pixelsPerSecond)
-                        .offset(x: CGFloat(viewModel.gifEndTime) * pixelsPerSecond)
-                        .allowsHitTesting(false)
-
-                    Rectangle()
-                        .fill(Color.white)
-                        .frame(width: handleWidth, height: thumbnailHeight)
-                        .contentShape(Rectangle())
-                        .offset(x: CGFloat(viewModel.gifStartTime) * pixelsPerSecond)
-                        .gesture(
-                            DragGesture()
-                                .updating($isDraggingStart) { _, state, _ in
-                                    state = true
-                                }
-                                .onChanged { value in
-                                    let newTime = Double(min(max(0, value.location.x / pixelsPerSecond),
-                                                             viewModel.gifEndTime - handleMinDistance / pixelsPerSecond))
-                                    viewModel.gifStartTime = newTime
-                                }
-                        )
-                        .zIndex(10)
-
-                    Rectangle()
-                        .fill(Color.white)
-                        .frame(width: handleWidth, height: thumbnailHeight)
-                        .contentShape(Rectangle())
-                        .offset(x: CGFloat(viewModel.gifEndTime) * pixelsPerSecond)
-                        .gesture(
-                            DragGesture()
-                                .updating($isDraggingEnd) { _, state, _ in
-                                    state = true
-                                }
-                                .onChanged { value in
-                                    let newTime = Double(max(min(duration, value.location.x / pixelsPerSecond),
-                                                             viewModel.gifStartTime + handleMinDistance / pixelsPerSecond))
-                                    viewModel.gifEndTime = newTime
-                                }
-                        )
-                        .zIndex(10)
-                }
-                .frame(height: thumbnailHeight)
-            }
-            .frame(height: thumbnailHeight)
-            .zIndex(20)
-        }
-    }
-}
 #endif

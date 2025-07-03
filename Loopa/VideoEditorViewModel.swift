@@ -17,19 +17,45 @@ public class VideoEditorViewModel: ObservableObject {
     @Published public var trimEnd: Double = 0.0
     @Published public var duration: Double = 1
     @Published public var isLoading: Bool = false
+    @Published public var gifFPS: Int = 6
+    @Published public var loadedDuration: Double? = nil
+
+    private let filterKey = "selectedFilter"
+    private let fpsKey = "gifFPS"
+
+    public init() {
+        if let saved = UserDefaults.standard.string(forKey: filterKey),
+           let f = FilterType(rawValue: saved) {
+            self.selectedFilter = f
+        }
+        let savedFPS = UserDefaults.standard.integer(forKey: self.fpsKey)
+        if savedFPS > 0 { self.gifFPS = savedFPS }
+    }
 
     private func setOnMain<T>(_ keyPath: ReferenceWritableKeyPath<VideoEditorViewModel, T>, _ value: T, label: String) {
         if Thread.isMainThread {
             self[keyPath: keyPath] = value
             print("Set \(label) on main thread")
+            if label == "selectedFilter", let raw = (value as? FilterType)?.rawValue {
+                UserDefaults.standard.set(raw, forKey: self.filterKey)
+            }
+            if label == "gifFPS", let fps = value as? Int {
+                UserDefaults.standard.set(fps, forKey: self.fpsKey)
+            }
         } else {
             DispatchQueue.main.async {
                 self[keyPath: keyPath] = value
                 print("Set \(label) on main thread (from background)")
+                if label == "selectedFilter", let raw = (value as? FilterType)?.rawValue {
+                    UserDefaults.standard.set(raw, forKey: self.filterKey)
+                }
+                if label == "gifFPS", let fps = value as? Int {
+                    UserDefaults.standard.set(fps, forKey: self.fpsKey)
+                }
             }
         }
     }
-
+    
     func handlePickerResult(_ result: PHPickerResult) {
         print("handlePickerResult called")
         guard result.itemProvider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) else { print("Picker result does not conform to movie type"); setOnMain(\Self.isLoading, false, label: "isLoading"); return }
@@ -53,12 +79,27 @@ public class VideoEditorViewModel: ObservableObject {
             }
 
             DispatchQueue.main.async {
-                print("Setting asset and generating thumbnails")
-                self.setOnMain(\Self.asset, AVURLAsset(url: copiedURL), label: "asset")
-                self.generateThumbnails(from: self.asset!)
                 Task {
-                    print("Calling applyFilter(.none)")
-                    await self.applyFilter(.none)
+                    print("Setting asset and generating thumbnails")
+                    let newAsset = AVURLAsset(url: copiedURL)
+                    self.setOnMain(\Self.asset, newAsset, label: "asset")
+                    if let asset = self.asset {
+                        do {
+                            let cmTime = try await asset.load(.duration)
+                            self.loadedDuration = cmTime.seconds
+                            if CMTimeCompare(cmTime, CMTime(seconds: 0, preferredTimescale: cmTime.timescale)) > 0 {
+                                let start = max(0, CMTimeGetSeconds(cmTime) * 0.45)
+                                let end = min(CMTimeGetSeconds(cmTime), start + 3)
+                                self.gifStartTime = start
+                                self.gifEndTime = end
+                            }
+                            self.generateThumbnails(from: asset)
+                            print("Calling applyFilter(.none)")
+                            await self.applyFilter(.none)
+                        } catch {
+                            print("Failed to load duration: \(error)")
+                        }
+                    }
                 }
             }
         }
@@ -110,6 +151,12 @@ public class VideoEditorViewModel: ObservableObject {
                 }
             }
         }
+    }
+
+    @MainActor
+    func shootVideo() {
+        print("Shoot video tapped — implement camera logic here.")
+        // TODO: Implement camera capture logic
     }
 }
 #endif

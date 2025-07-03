@@ -29,9 +29,30 @@
 		53782EDC2E14AFE900037C92 /* LoopaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LoopaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		5324736C2E159823007A741A /* Exceptions for "Loopa" folder in "LoopaTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				film_sprockets.png,
+			);
+			target = 53782ED12E14AFE900037C92 /* LoopaTests */;
+		};
+		5324736D2E159823007A741A /* Exceptions for "Loopa" folder in "LoopaUITests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				film_sprockets.png,
+			);
+			target = 53782EDB2E14AFE900037C92 /* LoopaUITests */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		53782EC62E14AFE700037C92 /* Loopa */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				5324736C2E159823007A741A /* Exceptions for "Loopa" folder in "LoopaTests" target */,
+				5324736D2E159823007A741A /* Exceptions for "Loopa" folder in "LoopaUITests" target */,
+			);
 			path = Loopa;
 			sourceTree = "<group>";
 		};

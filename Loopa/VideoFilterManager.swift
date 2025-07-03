@@ -62,9 +62,15 @@ extension VideoFilterManager {
 public enum FilterType: String, CaseIterable {
     case none = "None"
     case sepia = "Sepia"
+    case comic = "Comic"
+    case posterize = "Posterize"
     case noir = "Noir"
     case mono = "Mono"
     case blur = "Blur"
+    case vignette = "Vignette"
+    case bloom = "Bloom"
+    case pixelate = "Pixelate"
+    case invert = "Invert"
 }
 
 extension VideoFilterManager {
@@ -89,6 +95,36 @@ extension VideoFilterManager {
             let f = CIFilter.gaussianBlur()
             f.inputImage = image
             f.radius = 5
+            return f.outputImage ?? image
+        case .comic:
+            let f = CIFilter.comicEffect()
+            f.inputImage = image
+            return f.outputImage ?? image
+        case .posterize:
+            let f = CIFilter.colorPosterize()
+            f.inputImage = image
+            f.levels = 6
+            return f.outputImage ?? image
+        case .vignette:
+            let f = CIFilter.vignette()
+            f.inputImage = image
+            f.intensity = 1.0
+            f.radius = 2.0
+            return f.outputImage ?? image
+        case .bloom:
+            let f = CIFilter.bloom()
+            f.inputImage = image
+            f.intensity = 1.0
+            f.radius = 10
+            return f.outputImage ?? image
+        case .pixelate:
+            let f = CIFilter.pixellate()
+            f.inputImage = image
+            f.scale = 10
+            return f.outputImage ?? image
+        case .invert:
+            let f = CIFilter.colorInvert()
+            f.inputImage = image
             return f.outputImage ?? image
         }
     }

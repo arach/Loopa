@@ -33,7 +33,7 @@ class VideoExporter {
         }
     }
     
-    static func exportFilteredGIF(asset: AVAsset, filter: FilterType) async -> URL? {
+    static func exportFilteredGIF(asset: AVAsset, filter: FilterType, startTime: Double = 0.0, endTime: Double? = nil) async -> URL? {
         let docs = FileManager.default.temporaryDirectory
         let filteredURL = docs.appendingPathComponent("filtered.mov")
         try? FileManager.default.removeItem(at: filteredURL)
@@ -51,7 +51,9 @@ class VideoExporter {
             try await exportSession.export()
             if exportSession.status == .completed {
                 let filteredAsset = AVAsset(url: filteredURL)
-                await exportGIF(from: filteredAsset)
+                let clipEnd = endTime ?? filteredAsset.duration.seconds
+                let duration = max(0, clipEnd - startTime)
+                await exportGIF(from: filteredAsset, startTime: startTime, maxDuration: duration)
                 return docs.appendingPathComponent("output.gif")
             } else {
                 print("❌ Filtered export failed with status: \(exportSession.status)")
