@@ -1,10 +1,11 @@
 #if canImport(UIKit)
+@preconcurrency import AVFoundation
 import SwiftUI
-import AVFoundation
 import PhotosUI
 import CoreImage
 import UIKit
 
+@MainActor
 @available(iOS 13.0, *)
 public class VideoEditorViewModel: ObservableObject {
     @Published public var player: AVPlayer?
@@ -22,6 +23,7 @@ public class VideoEditorViewModel: ObservableObject {
 
     private let filterKey = "selectedFilter"
     private let fpsKey = "gifFPS"
+    private let videoService = VideoProcessingService()
 
     public init() {
         if let saved = UserDefaults.standard.string(forKey: filterKey),
@@ -79,7 +81,8 @@ public class VideoEditorViewModel: ObservableObject {
             }
 
             DispatchQueue.main.async {
-                Task {
+                Task { [weak self] in
+                    guard let self = self else { return }
                     print("Setting asset and generating thumbnails")
                     let newAsset = AVURLAsset(url: copiedURL)
                     self.setOnMain(\Self.asset, newAsset, label: "asset")
@@ -93,7 +96,7 @@ public class VideoEditorViewModel: ObservableObject {
                                 self.gifStartTime = start
                                 self.gifEndTime = end
                             }
-                            self.generateThumbnails(from: asset)
+                            await self.generateThumbnails(from: asset)
                             print("Calling applyFilter(.none)")
                             await self.applyFilter(.none)
                         } catch {
@@ -105,52 +108,36 @@ public class VideoEditorViewModel: ObservableObject {
         }
     }
 
+    @MainActor
     func applyFilter(_ filter: FilterType) async {
         print("applyFilter called with filter: \(filter)")
         guard let asset = asset else {
             print("No asset to apply filter to")
-            setOnMain(\Self.isLoading, false, label: "isLoading");
+            isLoading = false
             return
         }
-        setOnMain(\Self.isLoading, true, label: "isLoading")
-        setOnMain(\Self.selectedFilter, filter, label: "selectedFilter")
-        print("Calling VideoFilterManager.applyFilterAsync")
-        let item = await VideoFilterManager.applyFilterAsync(filter, to: asset)
-        DispatchQueue.main.async {
-            print("Setting player and updating duration")
-            self.setOnMain(\Self.player, AVPlayer(playerItem: item), label: "player")
-            let duration = asset.duration.seconds
+        isLoading = true
+        selectedFilter = filter
+
+        let item = await videoService.filteredPlayerItem(for: asset, filter: filter)
+        player = AVPlayer(playerItem: item)
+
+        do {
+            let duration = try await asset.load(.duration).seconds
             if duration > 0 {
-                self.setOnMain(\Self.duration, duration, label: "duration")
-                self.setOnMain(\Self.gifEndTime, duration, label: "gifEndTime")
+                self.duration = duration
+                self.gifEndTime = duration
             }
-            self.setOnMain(\Self.isLoading, false, label: "isLoading")
-            print("applyFilter finished, isLoading set to false")
+        } catch {
+            print("Failed to load duration in applyFilter: \(error)")
         }
+        isLoading = false
+        print("applyFilter finished, isLoading set to false")
     }
 
-    func generateThumbnails(from asset: AVAsset, frameCount: Int = 20) {
-        let duration = asset.duration
-        let generator = AVAssetImageGenerator(asset: asset)
-        generator.appliesPreferredTrackTransform = true
-        generator.maximumSize = CGSize(width: 100, height: 100)
-
-        let times: [NSValue] = (0..<frameCount).map { i in
-            let seconds = CMTimeGetSeconds(duration) * Double(i) / Double(frameCount)
-            return NSValue(time: CMTimeMakeWithSeconds(seconds, preferredTimescale: 600))
-        }
-
-        var images: [UIImage] = []
-        generator.generateCGImagesAsynchronously(forTimes: times) { _, cgImage, _, _, _ in
-            if let cgImage = cgImage {
-                DispatchQueue.main.async {
-                    let image = UIImage(cgImage: cgImage)
-                    images.append(image)
-                    self.setOnMain(\Self.thumbnails, images, label: "thumbnails")
-                    print("Updated thumbnails on main thread: \(Thread.isMainThread)")
-                }
-            }
-        }
+    func generateThumbnails(from asset: AVAsset, frameCount: Int = 20) async {
+        let images = await videoService.generateThumbnails(from: asset, frameCount: frameCount)
+        setOnMain(\Self.thumbnails, images, label: "thumbnails")
     }
 
     @MainActor

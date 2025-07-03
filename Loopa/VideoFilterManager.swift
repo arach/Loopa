@@ -59,7 +59,7 @@ extension VideoFilterManager {
     }
 }
 
-public enum FilterType: String, CaseIterable {
+public enum FilterType: String, CaseIterable, Sendable {
     case none = "None"
     case sepia = "Sepia"
     case comic = "Comic"
@@ -74,7 +74,7 @@ public enum FilterType: String, CaseIterable {
 }
 
 extension VideoFilterManager {
-    private static func apply(filter: FilterType, to image: CIImage) -> CIImage {
+    static func apply(filter: FilterType, to image: CIImage) -> CIImage {
         switch filter {
         case .none:
             return image
@@ -82,6 +82,15 @@ extension VideoFilterManager {
             let f = CIFilter.sepiaTone()
             f.inputImage = image
             f.intensity = 1.0
+            return f.outputImage ?? image
+        case .comic:
+            let f = CIFilter.comicEffect()
+            f.inputImage = image
+            return f.outputImage ?? image
+        case .posterize:
+            let f = CIFilter.colorPosterize()
+            f.inputImage = image
+            f.levels = 6
             return f.outputImage ?? image
         case .noir:
             let f = CIFilter.photoEffectNoir()
@@ -95,15 +104,6 @@ extension VideoFilterManager {
             let f = CIFilter.gaussianBlur()
             f.inputImage = image
             f.radius = 5
-            return f.outputImage ?? image
-        case .comic:
-            let f = CIFilter.comicEffect()
-            f.inputImage = image
-            return f.outputImage ?? image
-        case .posterize:
-            let f = CIFilter.colorPosterize()
-            f.inputImage = image
-            f.levels = 6
             return f.outputImage ?? image
         case .vignette:
             let f = CIFilter.vignette()
@@ -150,6 +150,22 @@ extension VideoFilterManager {
 
     static func applyFilter(_ image: CIImage, type: FilterType) -> CIImage {
         return apply(filter: type, to: image)
+    }
+
+    static func videoComposition(for asset: AVAsset, filter: FilterType) async -> AVVideoComposition? {
+        await withCheckedContinuation { continuation in
+            AVVideoComposition.videoComposition(
+                with: asset,
+                applyingCIFiltersWithHandler: { request in
+                    let source = request.sourceImage.clampedToExtent()
+                    let outputImage = apply(filter: filter, to: source)
+                    request.finish(with: outputImage.cropped(to: request.sourceImage.extent), context: nil)
+                },
+                completionHandler: { composition, error in
+                    continuation.resume(returning: composition)
+                }
+            )
+        }
     }
 }
 #endif

@@ -10,6 +10,9 @@ import SwiftUI
 struct VideoTrimmerView: View {
     @ObservedObject var viewModel: VideoEditorViewModel
 
+    @State private var isLeftDragging = false
+    @State private var isRightDragging = false
+
     // Constants
     private let thumbnailWidth: CGFloat = 40
     private let thumbnailHeight: CGFloat = 60
@@ -57,6 +60,9 @@ struct VideoTrimmerView: View {
                                 height: thumbnailHeight,
                                 cornerRadius: handleCornerRadius
                             )
+                            .scaleEffect(isLeftDragging ? 1.18 : 1.0)
+                            .shadow(color: Color.yellow.opacity(0.40), radius: isLeftDragging ? 10 : 5)
+                            .animation(.spring(response: 0.27, dampingFraction: 0.57), value: isLeftDragging)
                             .offset(x: CGFloat(viewModel.gifStartTime) * pixelsPerSecond - handleWidth / 2)
                             .gesture(
                                 DragGesture()
@@ -64,7 +70,9 @@ struct VideoTrimmerView: View {
                                         let newTime = Double(min(max(0, value.location.x / pixelsPerSecond),
                                                                  viewModel.gifEndTime - handleMinDistance / pixelsPerSecond))
                                         viewModel.gifStartTime = newTime
+                                        isLeftDragging = true
                                     }
+                                    .onEnded { _ in isLeftDragging = false }
                             )
                             .zIndex(10)
 
@@ -74,6 +82,9 @@ struct VideoTrimmerView: View {
                                 height: thumbnailHeight,
                                 cornerRadius: handleCornerRadius
                             )
+                            .scaleEffect(isRightDragging ? 1.18 : 1.0)
+                            .shadow(color: Color.yellow.opacity(0.40), radius: isRightDragging ? 10 : 5)
+                            .animation(.spring(response: 0.27, dampingFraction: 0.57), value: isRightDragging)
                             .offset(x: CGFloat(viewModel.gifEndTime) * pixelsPerSecond - handleWidth / 2)
                             .gesture(
                                 DragGesture()
@@ -81,7 +92,9 @@ struct VideoTrimmerView: View {
                                         let newTime = Double(max(min(duration, value.location.x / pixelsPerSecond),
                                                                  viewModel.gifStartTime + handleMinDistance / pixelsPerSecond))
                                         viewModel.gifEndTime = newTime
+                                        isRightDragging = true
                                     }
+                                    .onEnded { _ in isRightDragging = false }
                             )
                             .zIndex(10)
                         }

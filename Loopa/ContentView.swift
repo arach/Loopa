@@ -38,8 +38,11 @@ struct ContentView: View {
 
             // Video Preview or Placeholder
             ZStack {
-                if let asset = viewModel.asset {
-                    // Video player goes here
+                if let player = viewModel.player {
+                    VideoPlayer(player: player)
+                        .frame(height: 240)
+                        .cornerRadius(12)
+                        .clipped()
                 } else {
                     NoVideoPlaceholderView(
                         onImport: { isPickerPresented = true },
