@@ -1,19 +1,40 @@
 # Loopa
 
-**Loopa** is a SwiftUI video-editing playground for iOS.  Import a clip, trim it, preview Core Image filters in real-time, and export your masterpiece as either a filtered `.mov` video or an animated `.gif` – all on device.
+**Loopa** is a SwiftUI video-editing playground for iOS. Import or capture a video clip, trim it with visual feedback, preview 11 Core Image filters in real-time with animated thumbnails, and export your masterpiece as either a filtered `.mov` video or an animated `.gif` – all on device.
 
 ---
 
 ## ✨ Features
 
-* SwiftUI interface with real-time preview using `AVPlayer`  
-* Thumbnail film-strip generator for quick scrubbing  
-* Built-in filter set (None, Sepia, Noir, Mono, Blur) powered by Core Image  
-* GIF exporter with configurable frame-rate & duration  
-* Photos-picker integration (`PHPickerViewController`) for one-tap import  
-* Sandbox-safe save-to-Photos & copy-to-clipboard actions  
-* MVVM architecture & async/await throughout  
-* Unit & UI tests that run on-device / Simulator
+### 🎬 Video Input & Capture
+* **Video Import** – Photos-picker integration (`PHPickerViewController`) for one-tap import
+* **Camera Capture** – Built-in video recording with `CameraKitView` and `VideoCaptureView`
+* **Real-time Preview** – SwiftUI interface with live preview using `AVPlayer`
+
+### 🎨 Visual Effects & Editing
+* **11 Built-in Filters** – Comprehensive filter set powered by Core Image:
+  - None, Sepia, Comic, Posterize, Noir, Mono, Blur, Vignette, Bloom, Pixelate, Invert
+* **Live Filter Previews** – Animated thumbnail gallery with wave animations
+* **Visual Trimming** – Film-strip view with draggable handles and time tooltips
+* **Playhead Tracking** – Real-time video position indicator with time display
+
+### 📱 User Experience
+* **Animated Loading States** – Braille spinner and shimmer effects
+* **Spring Animations** – Cascading filter animations and responsive interactions
+* **Time Display** – Precise MM:SS.d format timers throughout the interface
+* **Debug Tools** – Developer menu for testing and animation triggers
+
+### 💾 Export & Sharing
+* **GIF Export** – Configurable frame-rate (6, 12, 24, 30 FPS) & custom duration
+* **Video Export** – Save filtered videos with applied effects
+* **Multiple Output Options** – Save to Photos, copy to clipboard, or share
+* **Background Processing** – Dedicated `VideoProcessingService` for smooth performance
+
+### 🏗️ Architecture
+* **MVVM Pattern** – Clean separation with `VideoEditorViewModel`
+* **Swift 6 Ready** – Full concurrency support with async/await and `@MainActor`
+* **Modular Design** – Reusable components and services
+* **Comprehensive Testing** – Unit & UI tests that run on-device / Simulator
 
 ---
 
@@ -22,18 +43,38 @@
 ```mermaid
 flowchart TD
     A[ContentView] -->|Observes| B(VideoEditorViewModel)
-    B -->|Loads / Filters| C{VideoFilterManager}
-    B -->|Exports| D(VideoExporter)
-    B -->|Generates| E[Thumbnails]
-    B -->|Presents| F(VideoImporter)
+    B -->|Delegates to| C(VideoProcessingService)
+    C -->|Uses| D{VideoFilterManager}
+    B -->|Exports via| E(VideoExporter)
+    B -->|Imports from| F(VideoImporter)
+    B -->|Captures with| G(CameraKitView)
+    A -->|Contains| H[VideoTrimmerView]
+    A -->|Contains| I[FilterPickerView]
+    A -->|Contains| J[NoVideoPlaceholderView]
+    A -->|Shows| K[BrailleSpinnerView]
+    A -->|Debug| L[DebugMenu]
 ```
 
-* **View (SwiftUI)** – `ContentView`, `FilmStripView`, `FilterPickerView`, `VideoTrimmerView`, `GIFView`
-* **ViewModel** – `VideoEditorViewModel` (published state & user intents)
-* **Model / Utilities**  
-  * `VideoFilterManager` – Core Image helpers  
-  * `VideoExporter` – `AVAssetExportSession` & GIF writer  
-  * `VideoImporter` – PHPicker wrapper
+### Component Overview
+
+* **Views (SwiftUI)**
+  * `ContentView` – Main interface with video preview and controls
+  * `VideoTrimmerView` – Film strip with draggable trim handles and tooltips
+  * `FilterPickerView` – Animated filter gallery with live thumbnails
+  * `NoVideoPlaceholderView` – Empty state with animated call-to-action
+  * `BrailleSpinnerView` – Custom loading animation
+  * `DebugMenu` – Developer tools and animation triggers
+
+* **ViewModels & Services**
+  * `VideoEditorViewModel` – Main state management with `@MainActor` safety
+  * `VideoProcessingService` – Background video processing and thumbnail generation
+
+* **Core Utilities**
+  * `VideoFilterManager` – Core Image filter implementations
+  * `VideoExporter` – Export to video/GIF with background processing
+  * `VideoImporter` – PHPicker integration for media selection
+  * `CameraKitView` & `VideoCaptureView` – Video recording capabilities
+  * `AVAsset+SafeLoad` – Safe async property loading extension
 
 ---
 
@@ -47,7 +88,7 @@ flowchart TD
 ### Clone & Open
 
 ```bash
-git clone https://github.com/your-org/Loopa.git
+git clone https://github.com/arach/Loopa.git
 cd Loopa
 open Loopa.xcodeproj
 ```
@@ -102,17 +143,32 @@ swift test
 ```
 Loopa/
 ├─ Loopa/                    # App target (SwiftUI views, iOS-only)
-│  ├─ ContentView.swift
-│  ├─ VideoEditorViewModel.swift
-│  ├─ VideoFilterManager.swift
-│  ├─ VideoExporter.swift
-│  ├─ VideoImporter.swift
-│  └─ ...
+│  ├─ ContentView.swift         # Main interface
+│  ├─ VideoEditorViewModel.swift # State management
+│  ├─ VideoProcessingService.swift # Background processing
+│  ├─ VideoFilterManager.swift   # Core Image filters
+│  ├─ VideoExporter.swift       # Export functionality
+│  ├─ VideoImporter.swift       # Photo picker integration
+│  ├─ CameraKitView.swift       # Video recording
+│  ├─ VideoCaptureView.swift    # Camera interface
+│  ├─ VideoTrimmerView.swift    # Film strip editor
+│  ├─ FilterPickerView.swift    # Filter gallery (in ContentView)
+│  ├─ NoVideoPlaceholderView.swift # Empty state
+│  ├─ BrailleSpinnerView.swift  # Loading animation
+│  ├─ DebugMenu.swift           # Developer tools
+│  ├─ AVAsset+SafeLoad.swift    # Async extensions
+│  ├─ Assets.xcassets/          # Images and colors
+│  │  └─ film_sprockets.imageset/ # Trimmer background
+│  └─ Media/                    # Asset resources
+│     └─ film_sprockets.png
+├─ Media/                    # Test media files
+│  └─ coffee.mov
 ├─ LoopaTests/               # XCTest unit tests (+ resources)
 │  ├─ LoopaTests.swift
 │  └─ test_video.mov
 ├─ LoopaUITests/             # UI test target
 ├─ Package.swift             # SPM manifest (LoopaCore)
+├─ CLAUDE.md                 # AI assistant context
 └─ README.md
 ```
 
