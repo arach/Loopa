@@ -2,6 +2,26 @@
 
 **Loopa** is a SwiftUI video-editing playground for iOS. Import or capture a video clip, trim it with visual feedback, preview 11 Core Image filters in real-time with animated thumbnails, and export your masterpiece as either a filtered `.mov` video or an animated `.gif` – all on device.
 
+<p align="center">
+  <img src="Media/screenshots/loopa-main-interface.png" alt="Loopa Main Interface" width="300">
+</p>
+
+---
+
+## 📱 Screenshots
+
+<details>
+<summary>View Screenshots</summary>
+
+### Main Interface
+The app features a clean, intuitive interface with real-time video preview, animated filter thumbnails, and visual trim controls.
+
+![Loopa Interface](Media/screenshots/loopa-main-interface.png)
+
+*Showing: Video player with 10-second skip controls, live filter previews with 6 visible filters, film strip trimmer with yellow handles and time tooltips (00:01.4 - 00:06.1), and action buttons.*
+
+</details>
+
 ---
 
 ## ✨ Features
