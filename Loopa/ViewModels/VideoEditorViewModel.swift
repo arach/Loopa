@@ -33,11 +33,12 @@ public class VideoEditorViewModel: ObservableObject {
 
     private let filterKey = "selectedFilter"
     private let fpsKey = "gifFPS"
-    private let videoService = VideoProcessingService()
+    private let videoService: VideoProcessingServiceProtocol
     private var timeObserverToken: Any?
     private weak var observedPlayer: AVPlayer?
 
-    public init() {
+    init(videoService: VideoProcessingServiceProtocol = VideoProcessingService()) {
+        self.videoService = videoService
         if let saved = UserDefaults.standard.string(forKey: filterKey),
            let f = FilterType(rawValue: saved) {
             self.selectedFilter = f

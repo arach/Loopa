@@ -14,7 +14,12 @@ import Photos
 import ImageIO
 import UniformTypeIdentifiers
 
-final class VideoProcessingService {
+protocol VideoProcessingServiceProtocol {
+    func generateThumbnails(from asset: AVAsset, frameCount: Int) async -> [UIImage]
+    // Add other methods as needed
+}
+
+final class VideoProcessingService: VideoProcessingServiceProtocol {
     // MARK: - Video Filtering
 
     func filteredPlayerItem(for asset: AVAsset, filter: FilterType) async -> AVPlayerItem {
