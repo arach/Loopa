@@ -16,6 +16,7 @@ import UniformTypeIdentifiers
 
 protocol VideoProcessingServiceProtocol {
     func generateThumbnails(from asset: AVAsset, frameCount: Int) async -> [UIImage]
+    func filteredPlayerItem(for asset: AVAsset, filter: FilterType) async -> AVPlayerItem
     // Add other methods as needed
 }
 

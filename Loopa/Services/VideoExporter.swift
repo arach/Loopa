@@ -5,8 +5,13 @@ import ImageIO
 import UniformTypeIdentifiers
 import UIKit
 
+protocol VideoExporterProtocol {
+    static func exportFilteredGIF(asset: AVAsset, filter: FilterType, startTime: Double, endTime: Double) async -> URL?
+    // Add other export methods as needed
+}
+
 @available(iOS 14.0, *)
-class VideoExporter {
+class VideoExporter: VideoExporterProtocol {
     static func export(asset: AVAsset, filter: FilterType) async {
         let docs = FileManager.default.temporaryDirectory
         let outputURL = docs.appendingPathComponent("filtered.mov")
@@ -33,7 +38,7 @@ class VideoExporter {
         }
     }
     
-    static func exportFilteredGIF(asset: AVAsset, filter: FilterType, startTime: Double = 0.0, endTime: Double? = nil) async -> URL? {
+    static func exportFilteredGIF(asset: AVAsset, filter: FilterType, startTime: Double, endTime: Double) async -> URL? {
         let docs = FileManager.default.temporaryDirectory
         let filteredURL = docs.appendingPathComponent("filtered.mov")
         try? FileManager.default.removeItem(at: filteredURL)
@@ -51,7 +56,7 @@ class VideoExporter {
             try await exportSession.export()
             if exportSession.status == .completed {
                 let filteredAsset = AVAsset(url: filteredURL)
-                let clipEnd = endTime ?? filteredAsset.duration.seconds
+                let clipEnd = endTime
                 let duration = max(0, clipEnd - startTime)
                 await exportGIF(from: filteredAsset, startTime: startTime, maxDuration: duration)
                 return docs.appendingPathComponent("output.gif")
